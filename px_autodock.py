@@ -141,7 +141,7 @@ def sample_dna_interface(pdb_filename, partners,
     #    generate structures too quickly for PyMOL to read, the
     #    "Buffer clean up" message
     if use_pymol:
-        AddPyMolObserver(test_pose,True)
+        protocols.moves.AddPyMOLObserver(test_pose,True)
 
     # 8. perform protein-protein docking
     counter = 0    # for pretty output to PyMOL
@@ -151,6 +151,9 @@ def sample_dna_interface(pdb_filename, partners,
         test_pose.assign(pose)
         # -change the pose name, for pretty output to PyMOL
         counter += 1
+        print "===================================================="
+        print "Job %i of %i"%(counter,jobs)
+        print "===================================================="
         test_pose.pdb_info().name(job_output + '_' + str(counter))
 
         if cst_file != '':
@@ -365,7 +368,7 @@ def main():
     cst_filename = "%s.cst"%(options.job_output)
     make_pdbs(pdb_filename,options.t7,options.px,phosphate)
     create_constraints(cst_filename,phosphate)
-    sample_dna_interface(pdb_filename, 'ABC_1234', jobs, options.job_output, cst_filename, use_pymol )
+    sample_dna_interface(pdb_filename, 'ABC_WXYZ', jobs, options.job_output, cst_filename, use_pymol )
     sort_fasc_file("%s.fasc"%(options.job_output))
 
 if __name__ == '__main__':
