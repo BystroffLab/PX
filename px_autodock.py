@@ -261,14 +261,15 @@ def rescore(pdb_filename,cst_file):
     # 4. create ScoreFunctions for centroid and fullatom docking
     scorefxn = create_score_function('dna')
     scorefxn.set_weight(core.scoring.fa_elec , 1)    # an "electrostatic" term
-    scorefxn.set_weight(core.scoring.atom_pair_constraint, 1.0) #enable our constraints
+    scorefxn.set_weight(core.scoring.atom_pair_constraint, 1.0) # enable our constraints
     cstMover.apply(pose)
     scorefxn.show(pose)
     pose.dump_scored_pdb(pdb_filename,scorefxn)
 
 def create_constraints(cst_filename, phosphate):
     """Generates the constraints file to be used for the docking simulation based
-    on the selected scissile phosphate"""
+    on the selected scissile phosphate.  Generates constraints between scissile 
+    phosphate, metal ion, and catalytic residues of T7 endoI as per (Hadden et al, 2007)"""
     phosphate = ''.join(phosphate.split("_"))
     #entries in constraint list are tuples in the following format:
     #(atomname, residuenumber, px_atom, dist, dist_cutoff)
@@ -283,16 +284,21 @@ def sort_fasc_file(fasc_file):
     '''Takes the .fasc file output by sample_dna_interface and rearranges it to be
     in ascending order based on total energy score'''
     first = ''
+    # extract lines from the file
     with open(fasc_file) as fin:
         lines = [line.strip().split() for line in fin]
         fin.close()
-        first = lines[0]
-        lines.pop(0)
-    output = sorted(lines,key=lambda tup: float(tup[3]))
+        # retrieve the header row
+        first = lines.pop(0)
+    # sort the data
+    lines = sorted(lines,key=lambda tup: float(tup[3]))
+    # open the original file to be overwritten with sorted data
     fout = open(fasc_file,'w+')
+    # write the header line
     fout.write(" ".join(first))
     fout.write('\n')
-    for line in output:
+    # write everything else
+    for line in lines:
         fout.write(" ".join(line))
         fout.write('\n')
     fout.close()
@@ -300,6 +306,7 @@ def sort_fasc_file(fasc_file):
 def minimize(pdb_in,pdb_out,cst_file):
     '''minimizes the pdb file pdb_in using the same scorefunction and constraints file used for docking
     outputs minimized pdb as pdb_out with score information'''
+    # initialize and read starting pose
     pose = Pose()
     if PR4:
         pose_from_file(pose,pdb_in)
@@ -327,11 +334,12 @@ def minimize(pdb_in,pdb_out,cst_file):
     minMover.score_function(sfxn)
     minMover.movemap(movemap)
     #print score before min
-    print "score before minimization"
+    print "score before minimization:"
     sfxn.show(pose)
     #do the minimization
     minMover.apply(pose)
     #print score
+    print "score after minimization:"
     sfxn.show(pose)
     #dump pdb
     pose.dump_scored_pdb(pdb_out,sfxn)
@@ -339,36 +347,34 @@ def minimize(pdb_in,pdb_out,cst_file):
 
 def main():
     parser = optparse.OptionParser()
-    #source of T7 file
+    # source of T7 file
     parser.add_option('--t7',dest='t7',default='t7_base.pdb',help='PDB file specifying the coordinates of the single-headed T7 model')
-    #source of PX file
+    # source of PX file
     parser.add_option('--px',dest='px',default='PX.pdb',help='PDB file specifying the coordinates of the PX DNA model')
-    #Scissile phosphate
+    # scissile phosphate
     parser.add_option('--phosphate',dest='phosphate',default='6_X',help='String specifying the scissile phosphate of PX to model.  This should be in the format nucleotide#_chainID (e.g. 6_X for 6th nucleotide of chain X)')
-    #pymol flag
+    # pymol flag
     parser.add_option('--pymol',dest='use_pymol',action='store_true',default=False,help='use this flag if you want to view live output in pymol')
-    #jobs
+    # jobs
     parser.add_option('--jobs',type='int',dest='jobs',default=1,help='the number of jobs (trajectories) to perform')
-    #job_output
+    # job_output
     parser.add_option('--job_output',dest='job_output',default='dna_output',help='the name preceding all output, output PDB files and .fasc')
-
+    
+    # parse arguments
     (options,args) = parser.parse_args()
+    # set output filename
     pdb_filename = "%s.pdb"%(options.job_output)
     jobs = options.jobs
     use_pymol = options.use_pymol
     phosphate = options.phosphate.upper()
-    # try:
-    #     os.chdir(options.job_output)
-    # except:
-    #     os.mkdir(options.job_output)
-    #     os.chdir(options.job_output)
-    #     shutil.copy("%s/../%s"%(os.get_cwd(),options.t7),"%s/"%(os.get_cwd()))
-    #     shutil.copy("%s/../%s"%(os.get_cwd(), options.px),"%s/"%(os.get_cwd()))
-
     cst_filename = "%s.cst"%(options.job_output)
+    # Generate starting PDB files for docking
     make_pdbs(pdb_filename,options.t7,options.px,phosphate)
+    # Generate constraints file
     create_constraints(cst_filename,phosphate)
+    # Perform the docking simulation
     sample_dna_interface(pdb_filename, 'ABC_WXYZ', jobs, options.job_output, cst_filename, use_pymol )
+    # Postprocessing
     sort_fasc_file("%s.fasc"%(options.job_output))
 
 if __name__ == '__main__':
