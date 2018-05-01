@@ -1,8 +1,11 @@
 #!/bin/env python
-
+"""
+Copies best scoring files into a new directory called high_score
+"""
 from commands import getstatusoutput as run
-
+# create best dictionary
 best = {}
+# populate dictionary with best scoring simulation for each phosphate
 best["9_X"] = 19
 best["10_Z"] = 338
 best["1_W"] = 471
@@ -32,6 +35,7 @@ best["1_Y"] = 166
 best["7_W"] = 372
 best["4_W"] = 255
 
+# Copy all the relevant files
 for phosphate in sorted(best.keys()):
     cmd = "cp -v test%s/test%s_%i.pdb high_score/"%(phosphate,phosphate,best[phosphate])
     print run(cmd)
